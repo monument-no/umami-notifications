@@ -15,10 +15,10 @@ async function getAuthToken() {
   return res.data.token;
 }
 
-async function getYesterdayStats(token) {
+async function getWeeklyStats(token) {
   const now = new Date();
-  const end = new Date(now.setHours(0, 0, 0, 0)).getTime();
-  const start = end - 24 * 60 * 60 * 1000;
+  const end = new Date(now.setHours(0, 0, 0, 0)).getTime(); // Today at 00:00
+  const start = end - 7 * 24 * 60 * 60 * 1000;
 
   const response = await axios.get(
     `${UMAMI_URL}/api/websites/${UMAMI_ID_WEBSITE_ID}/stats?startAt=${start}&endAt=${end}`,
@@ -29,7 +29,7 @@ async function getYesterdayStats(token) {
     }
   );
 
-  return response.data;
+  return { stats: response.data, start, end };
 }
 
 async function postToSlack(message) {
@@ -41,8 +41,29 @@ async function postToSlack(message) {
 const main = async () => {
   try {
     const token = await getAuthToken();
-    const stats = await getYesterdayStats(token);
-    const message = `📊 *MNMT Analytics (Yesterday)*\n• Pageviews: ${stats.pageviews}\n• Visitors: ${stats.uniques}`;
+
+    const { stats, start, end } = await getWeeklyStats(token);
+
+    const formatDate = (timestamp) =>
+      new Date(timestamp).toISOString().split('T')[0];
+
+    const formatChange = (change) => `${change >= 0 ? '+' : ''}${change}`;
+
+    const message = `📊 *MNMT.no Analytics* (${formatDate(
+      start
+    )} → ${formatDate(end - 1)})
+
+• *Pageviews:* ${stats.pageviews.value} (${formatChange(
+      stats.pageviews.change
+    )})
+• *Unique visitors:* ${stats.visitors.value} (${formatChange(
+      stats.visitors.change
+    )})
+• *Total time on site:* ${stats.totaltime.value}s (${formatChange(
+      stats.totaltime.change
+    )}s)
+`;
+
     await postToSlack(message);
     console.log('Slack report sent successfully.');
   } catch (err) {
