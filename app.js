@@ -38,6 +38,22 @@ async function postToSlack(message) {
   });
 }
 
+const formatDuration = (seconds, sign = '') => {
+  if (seconds < 60) {
+    return `${sign}${seconds}s`;
+  } else if (seconds < 3600) {
+    return `${sign}${(seconds / 60).toFixed(1)}min`;
+  } else {
+    return `${sign}${(seconds / 3600).toFixed(1)}h`;
+  }
+};
+
+const formatDurationChange = (change) => {
+  const sign = change >= 0 ? '+' : '';
+  const abs = Math.abs(change);
+  return formatDuration(abs, sign);
+};
+
 const main = async () => {
   try {
     const token = await getAuthToken();
@@ -59,9 +75,10 @@ const main = async () => {
 • *Unique visitors:* ${stats.visitors.value} (${formatChange(
       stats.visitors.change
     )})
-• *Total time on site:* ${stats.totaltime.value}s (${formatChange(
-      stats.totaltime.change
-    )}s)
+• *Total time on site:* ${formatDuration(
+      stats.totaltime.value
+    )} (${formatDurationChange(stats.totaltime.change)})
+
 `;
 
     await postToSlack(message);
